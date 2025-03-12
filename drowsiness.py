@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import tensorflow as tf
 import streamlit as st
-import pygame
 import gdown
 from scipy.spatial import distance as dist
 from collections import deque
@@ -12,19 +11,32 @@ from collections import deque
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-# Initialize pygame for sound alerts
-pygame.mixer.init()
 ALARM_SOUND_PATH = "assets/alarm.mp3"  # Relative path for deployment
 
-# Function to play/stop alarm
+# Function to play/stop alarm using JavaScript
+
 def play_alarm():
-    if not pygame.mixer.music.get_busy():
-        pygame.mixer.music.load(ALARM_SOUND_PATH)
-        pygame.mixer.music.play(-1)
+    """Plays alarm in a loop using JavaScript in Streamlit."""
+    alarm_html = f"""
+        <audio id="alarmSound" autoplay loop>
+            <source src="{ALARM_SOUND_PATH}" type="audio/mp3">
+        </audio>
+        <script>
+            var audio = document.getElementById("alarmSound");
+            audio.play();
+        </script>
+    """
+    st.markdown(alarm_html, unsafe_allow_html=True)
 
 def stop_alarm():
-    if pygame.mixer.music.get_busy():
-        pygame.mixer.music.stop()
+    """Stops the alarm by removing the audio element via JavaScript."""
+    stop_html = """
+        <script>
+            var audio = document.getElementById("alarmSound");
+            if (audio) { audio.pause(); audio.currentTime = 0; }
+        </script>
+    """
+    st.markdown(stop_html, unsafe_allow_html=True)
 
 # Eye Aspect Ratio (EAR) calculation
 def eye_aspect_ratio(eye):
@@ -92,8 +104,9 @@ if st.session_state.running:
                     play_alarm()
             else:
                 COUNTER = 0
-                ALARM_ON = False
-                stop_alarm()
+                if ALARM_ON:
+                    ALARM_ON = False
+                    stop_alarm()
 
         frame_display.image(frame, channels="BGR")
 
