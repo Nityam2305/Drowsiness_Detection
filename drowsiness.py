@@ -1,6 +1,5 @@
 import streamlit as st
-# Streamlit UI
-st.set_page_config(page_title="Drowsiness Detector", page_icon="🚗", layout="wide")import os
+import os
 import cv2
 import numpy as np
 import tensorflow as tf
@@ -9,6 +8,9 @@ import threading
 import time
 from scipy.spatial import distance as dist
 from collections import deque
+
+# Set page config at the very start
+st.set_page_config(page_title="Drowsiness Detector", page_icon="🚗", layout="wide")
 
 # Suppress TensorFlow warnings
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
