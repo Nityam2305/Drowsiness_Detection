@@ -49,7 +49,15 @@ def eye_aspect_ratio(eye):
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Load TensorFlow model
-model = tf.keras.models.load_model("models/drowsiness_model.h5")
+MODEL_PATH = "models/drowsiness_model.h5"
+MODEL_FILE_ID = "1bYj8W6N5u1wnRZ64kZtg7r8V393naGfz"  # Google Drive File ID
+
+# Auto-Download Model if Missing
+if not os.path.exists(MODEL_PATH):
+    st.info("Downloading Drowsiness Model...")
+    gdown.download(f"https://drive.google.com/uc?id={MODEL_FILE_ID}", MODEL_PATH, quiet=False)
+
+model = tf.keras.models.load_model(MODEL_PATH)
 model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
 # Constants
