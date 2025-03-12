@@ -122,7 +122,8 @@ if st.session_state.running:
         frame_display.image(frame, channels="BGR")
 
     cap.release()
-    cv2.destroyAllWindows()
+    
+
 
 st.markdown("---")
 st.markdown("### ℹ️ How It Works")
