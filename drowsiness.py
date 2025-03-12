@@ -1,8 +1,9 @@
-import os
+import streamlit as st
+# Streamlit UI
+st.set_page_config(page_title="Drowsiness Detector", page_icon="🚗", layout="wide")import os
 import cv2
 import numpy as np
 import tensorflow as tf
-import streamlit as st
 import gdown
 import threading
 import time
@@ -66,9 +67,6 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 EYE_AR_CONSEC_FRAMES = 20
 COUNTER = 0
 ALARM_ON = False
-
-# Streamlit UI
-st.set_page_config(page_title="Drowsiness Detector", page_icon="🚗", layout="wide")
 
 st.title("🚗 Driver Drowsiness Detection System")
 st.markdown("#### Stay alert while driving. This tool helps detect drowsiness in real-time.")
