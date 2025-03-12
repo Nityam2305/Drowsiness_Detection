@@ -1,4 +1,5 @@
 import os
+import gdown
 import dlib
 import numpy as np
 import tensorflow as tf
@@ -12,9 +13,19 @@ from collections import deque
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+# Google Drive File ID for shape_predictor_68_face_landmarks.dat
+FILE_ID = "YOUR_GOOGLE_DRIVE_FILE_ID"
+MODEL_PATH = "shape_predictor_68_face_landmarks.dat"
+
+# Download the .dat file if not already present
+if not os.path.exists(MODEL_PATH):
+    url = f"https://drive.google.com/uc?id={FILE_ID}"
+    st.info("Downloading facial landmark model...")
+    gdown.download(url, MODEL_PATH, quiet=False)
+
 # Initialize pygame mixer for sound alerts
 pygame.mixer.init()
-ALARM_SOUND_PATH = "C:\\Users\\bhavi\\Downloads\\Alarm.mp3"  # Change path to your alarm sound file
+ALARM_SOUND_PATH = "alarm.mp3"  # Ensure you upload this file separately if deploying on Streamlit Cloud
 
 def play_alarm():
     """Plays alarm sound continuously if not already playing."""
@@ -36,10 +47,10 @@ def eye_aspect_ratio(eye):
 
 # Load dlib's face detector and facial landmark predictor
 face_detector = dlib.get_frontal_face_detector()
-landmark_predictor = dlib.shape_predictor("C:\\Users\\bhavi\\OneDrive\\Documents\\Projects\\Drowsiness\\shape_predictor_68_face_landmarks.dat")
+landmark_predictor = dlib.shape_predictor(MODEL_PATH)
 
 # Load TensorFlow model & fix metric warning
-model = tf.keras.models.load_model("C:\\Users\\bhavi\\OneDrive\\Documents\\Projects\\Drowsiness\\drowsiness_model.h5")
+model = tf.keras.models.load_model("drowsiness_model.h5")
 model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
 # Constants
