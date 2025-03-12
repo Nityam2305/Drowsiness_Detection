@@ -1,8 +1,8 @@
-streamlit
 opencv-python
-numpy
 dlib
+numpy
 tensorflow
+streamlit
 pygame
 scipy
-requests
+gdown
