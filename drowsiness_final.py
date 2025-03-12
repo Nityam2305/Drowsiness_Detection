@@ -14,7 +14,7 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Google Drive File ID for shape_predictor_68_face_landmarks.dat
-FILE_ID = "YOUR_GOOGLE_DRIVE_FILE_ID"
+FILE_ID = "1J3CXKu_o3Bu-U3L1Iy9kESGQhkkF9gW0"
 MODEL_PATH = "shape_predictor_68_face_landmarks.dat"
 
 # Download the .dat file if not already present
