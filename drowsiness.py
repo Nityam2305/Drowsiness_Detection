@@ -53,6 +53,9 @@ MODEL_PATH = "models/drowsiness_model.h5"
 MODEL_FILE_ID = "1bYj8W6N5u1wnRZ64kZtg7r8V393naGfz"  # Google Drive File ID
 
 # Auto-Download Model if Missing
+# Ensure models directory exists
+os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+
 if not os.path.exists(MODEL_PATH):
     st.info("Downloading Drowsiness Model...")
     gdown.download(f"https://drive.google.com/uc?id={MODEL_FILE_ID}", MODEL_PATH, quiet=False)
