@@ -1,5 +1,6 @@
-opencv-python
+cmake
 dlib
+opencv-python
 numpy
 tensorflow
 streamlit
