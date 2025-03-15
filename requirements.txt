@@ -1,7 +1,6 @@
-gradio
-opencv-python-headless
-numpy
-gdown
+mediapipe
+opencv-python
 tensorflow
-pygame
+streamlit
+numpy
 scipy
