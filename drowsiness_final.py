@@ -1,10 +1,9 @@
 import os
-import gdown
-import dlib
 import numpy as np
 import tensorflow as tf
 import cv2
 import streamlit as st
+import mediapipe as mp  # Replace dlib with Mediapipe
 import pygame
 from scipy.spatial import distance as dist
 from collections import deque
@@ -13,19 +12,9 @@ from collections import deque
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-# Google Drive File ID for shape_predictor_68_face_landmarks.dat
-FILE_ID = "1J3CXKu_o3Bu-U3L1Iy9kESGQhkkF9gW0"
-MODEL_PATH = "shape_predictor_68_face_landmarks.dat"
-
-# Download the .dat file if not already present
-if not os.path.exists(MODEL_PATH):
-    url = f"https://drive.google.com/uc?id={FILE_ID}"
-    st.info("Downloading facial landmark model...")
-    gdown.download(url, MODEL_PATH, quiet=False)
-
 # Initialize pygame mixer for sound alerts
 pygame.mixer.init()
-ALARM_SOUND_PATH = "alarm.mp3"  # Ensure you upload this file separately if deploying on Streamlit Cloud
+ALARM_SOUND_PATH = "C:\\Users\\bhavi\\OneDrive\\Documents\\Projects\\Drowsiness\\Alarm.mp3"  # Path to your alarm sound file
 
 def play_alarm():
     """Plays alarm sound continuously if not already playing."""
@@ -45,12 +34,12 @@ def eye_aspect_ratio(eye):
     C = dist.euclidean(eye[0], eye[3])
     return (A + B) / (2.0 * C)
 
-# Load dlib's face detector and facial landmark predictor
-face_detector = dlib.get_frontal_face_detector()
-landmark_predictor = dlib.shape_predictor(MODEL_PATH)
+# Initialize Mediapipe Face Mesh
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 # Load TensorFlow model & fix metric warning
-model = tf.keras.models.load_model("drowsiness_model.h5")
+model = tf.keras.models.load_model("C:\\Users\\bhavi\\OneDrive\\Documents\\Projects\\Drowsiness\\drowsiness_model.h5")
 model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
 # Constants
@@ -61,6 +50,12 @@ CALIBRATION_FRAMES = 50
 calibrated = False
 calibrated_threshold = 0.2
 ear_values = deque(maxlen=CALIBRATION_FRAMES)
+
+# Mediapipe eye landmark indices (adjusted for Face Mesh)
+# Left eye: 33 (outer corner), 160 (upper), 158 (upper), 133 (inner corner), 153 (lower), 144 (lower)
+# Right eye: 362 (outer corner), 385 (upper), 387 (upper), 263 (inner corner), 373 (lower), 380 (lower)
+LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380]
 
 # Streamlit UI
 st.title("👁️ Driver Drowsiness Detection System")
@@ -84,48 +79,53 @@ if st.session_state.running:
             st.error("❌ Failed to capture video")
             break
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_detector(gray)
+        # Convert frame to RGB for Mediapipe
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = face_mesh.process(frame_rgb)
 
-        for face in faces:
-            landmarks = landmark_predictor(gray, face)
-            landmarks = np.array([[p.x, p.y] for p in landmarks.parts()])
+        if results.multi_face_landmarks:
+            for face_landmarks in results.multi_face_landmarks:
+                h, w, _ = frame.shape
+                landmarks = [(int(lm.x * w), int(lm.y * h)) for lm in face_landmarks.landmark]
 
-            left_eye = landmarks[36:42]
-            right_eye = landmarks[42:48]
+                # Extract left and right eye landmarks
+                left_eye = [landmarks[i] for i in LEFT_EYE_INDICES]
+                right_eye = [landmarks[i] for i in RIGHT_EYE_INDICES]
 
-            left_ear = eye_aspect_ratio(left_eye)
-            right_ear = eye_aspect_ratio(right_eye)
-            ear = (left_ear + right_ear) / 2.0
-            ear_values.append(ear)
+                # Calculate EAR
+                left_ear = eye_aspect_ratio(left_eye)
+                right_ear = eye_aspect_ratio(right_eye)
+                ear = (left_ear + right_ear) / 2.0
+                ear_values.append(ear)
 
-            # Calibration phase
-            if not calibrated and len(ear_values) >= CALIBRATION_FRAMES:
-                calibrated_threshold = np.mean(ear_values) * 0.8  # Set threshold as 80% of mean EAR
-                calibrated = True
-                st.success(f"✅ Calibration completed. EAR threshold set to {calibrated_threshold:.2f}")
+                # Calibration phase
+                if not calibrated and len(ear_values) >= CALIBRATION_FRAMES:
+                    calibrated_threshold = np.mean(ear_values) * 0.8  # Set threshold as 80% of mean EAR
+                    calibrated = True
+                    st.success(f"✅ Calibration completed. EAR threshold set to {calibrated_threshold:.2f}")
 
-            # Prepare image for TensorFlow model
-            eye_image = cv2.resize(gray, (64, 64)) / 255.0  # Normalize
-            eye_image = np.expand_dims(eye_image, axis=(0, -1))
-            prediction = model.predict(eye_image)[0][0]
+                # Prepare image for TensorFlow model
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                eye_image = cv2.resize(gray, (64, 64)) / 255.0  # Normalize
+                eye_image = np.expand_dims(eye_image, axis=(0, -1))
+                prediction = model.predict(eye_image)[0][0]
 
-            if calibrated and (ear < calibrated_threshold and prediction > 0.5):
-                COUNTER += 1
-                if COUNTER >= EYE_AR_CONSEC_FRAMES and not ALARM_ON:
-                    ALARM_ON = True
-                    st.warning("🚨 Drowsiness Alert! Wake up!")
-                    play_alarm()
-                cv2.putText(frame, "DROWSINESS ALERT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            else:
-                COUNTER = 0  # Properly reset counter if condition is not met
-                ALARM_ON = False
-                stop_alarm()
+                # Drowsiness detection logic
+                if calibrated and (ear < calibrated_threshold and prediction > 0.5):
+                    COUNTER += 1
+                    if COUNTER >= EYE_AR_CONSEC_FRAMES and not ALARM_ON:
+                        ALARM_ON = True
+                        st.warning("🚨 Drowsiness Alert! Wake up!")
+                        play_alarm()
+                    cv2.putText(frame, "DROWSINESS ALERT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                else:
+                    COUNTER = 0  # Properly reset counter if condition is not met
+                    ALARM_ON = False
+                    stop_alarm()
 
-            # Draw landmarks
-            for (x, y) in np.concatenate((left_eye, right_eye), axis=0):
-                cv2.circle(frame, (x, y), 2, (255, 0, 0), -1)
-            cv2.rectangle(frame, (face.left(), face.top()), (face.right(), face.bottom()), (0, 255, 0), 2)
+                # Draw landmarks
+                for (x, y) in left_eye + right_eye:
+                    cv2.circle(frame, (x, y), 2, (255, 0, 0), -1)
 
         frame_display.image(frame, channels="BGR")
 
